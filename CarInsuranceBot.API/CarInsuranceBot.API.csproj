@@ -14,8 +14,6 @@
 
   <ItemGroup>
     <Folder Include="Application\DTOs\" />
-    <Folder Include="Core\" />
-    <Folder Include="Infrastructure\" />
   </ItemGroup>
 
 </Project>
