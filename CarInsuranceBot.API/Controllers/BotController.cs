@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Telegram.Bot;
+using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 
 namespace CarInsuranceBot.API.Controllers
 {
@@ -15,11 +17,28 @@ namespace CarInsuranceBot.API.Controllers
             _botClient = botClient;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> Post([FromBody] object update)
+        [HttpGet]
+        public IActionResult Get()
         {
-            // Test
-            Console.WriteLine($"Incoming update: {update}");
+            return Ok("Bot is running and waiting for Telegram webhooks...");
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Post([FromBody] Update update)
+        {
+            if (update.Type == UpdateType.Message && update.Message?.Text != null)
+            {
+                var chatId = update.Message.Chat.Id;
+                var messageText = update.Message.Text;
+                var userName = update.Message.From?.FirstName ?? "Незнайомець";
+
+                Console.WriteLine($"Received message '{messageText}' from {userName}");
+
+                var replyText = $"Привіт, {userName}! Я отримав твоє повідомлення: \"{messageText}\". Мій двигун працює!";
+
+                await _botClient.SendMessage(chatId: chatId, text: replyText);
+            }
+
             return Ok();
         }
     }
