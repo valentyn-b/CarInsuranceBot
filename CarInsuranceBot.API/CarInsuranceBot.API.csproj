@@ -4,14 +4,18 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>9ab55044-3172-4b2b-a070-e48b0adde434</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.4" />
+    <PackageReference Include="Telegram.Bot" Version="22.9.5.3" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\" />
+    <Folder Include="Application\DTOs\" />
+    <Folder Include="Core\" />
+    <Folder Include="Infrastructure\" />
   </ItemGroup>
 
 </Project>
