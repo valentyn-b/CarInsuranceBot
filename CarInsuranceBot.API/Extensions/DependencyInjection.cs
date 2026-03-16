@@ -17,7 +17,7 @@ namespace CarInsuranceBot.API.Extensions
 
             services.AddScoped<IMessageSender, MessageSender>();
 
-            services.AddScoped<IAiAssistantService, MockAiAssistantService>();
+            services.AddScoped<IAiAssistantService, OpenAiAssistantService>();
 
             return services;
         }
@@ -37,7 +37,7 @@ namespace CarInsuranceBot.API.Extensions
 
         public static IServiceCollection AddExternalIntegrations (this IServiceCollection services, IConfiguration configuration)
         {
-            // Add OpenAI
+            services.Configure<OpenAiSettings>(configuration.GetSection("OpenAI"));
 
             // Add Mendee
 

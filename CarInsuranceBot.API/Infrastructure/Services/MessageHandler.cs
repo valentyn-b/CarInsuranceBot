@@ -23,9 +23,9 @@ namespace CarInsuranceBot.API.Infrastructure.Services
             {
                 var chatId = update.Message.Chat.Id;
                 var messageText = update.Message.Text;
-                var userName = update.Message.From?.FirstName ?? "Незнайомець";
+                var userName = update.Message.From?.FirstName ?? "Unknown";
 
-                Console.WriteLine($"[MessageHandler] Отримано '{messageText}' від {userName}");
+                Console.WriteLine($"[MessageHandler] Received '{messageText}' from {userName}");
 
                 var currentState = _stateStorage.GetUserState(chatId);
                 var (replyText, newState) = await _aiAssistantService.ProcessUserMessageAsync(messageText, currentState);
