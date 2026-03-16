@@ -1,5 +1,6 @@
 ﻿using CarInsuranceBot.API.Application.Interfaces;
 using CarInsuranceBot.API.Configuration;
+using CarInsuranceBot.API.Infrastructure.Services;
 using CarInsuranceBot.API.Infrastructure.Storage;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
@@ -11,6 +12,12 @@ namespace CarInsuranceBot.API.Extensions
         public static IServiceCollection AddApplicationServices(this IServiceCollection services)
         {
             services.AddSingleton<IUserStateStorage, InMemoryUserStateStorage>();
+
+            services.AddScoped<IMessageHandler, MessageHandler>();
+
+            services.AddScoped<IMessageSender, MessageSender>();
+
+            services.AddScoped<IAiAssistantService, MockAiAssistantService>();
 
             return services;
         }
