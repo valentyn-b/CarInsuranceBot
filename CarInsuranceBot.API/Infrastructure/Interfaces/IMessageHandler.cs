@@ -1,6 +1,6 @@
 ﻿using Telegram.Bot.Types;
 
-namespace CarInsuranceBot.API.Application.Interfaces
+namespace CarInsuranceBot.API.Infrastructure.Interfaces
 {
     public interface IMessageHandler
     {

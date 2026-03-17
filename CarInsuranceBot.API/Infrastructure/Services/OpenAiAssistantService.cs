@@ -1,8 +1,6 @@
 ﻿using CarInsuranceBot.API.Application.Enums;
 using CarInsuranceBot.API.Application.Interfaces;
-using CarInsuranceBot.API.Configuration;
 using CarInsuranceBot.API.Infrastructure.DTOs;
-using Microsoft.Extensions.Options;
 using OpenAI.Chat;
 using System.Text.Json;
 
@@ -13,9 +11,9 @@ namespace CarInsuranceBot.API.Infrastructure.Services
         private readonly ChatClient _chatClient;
         private readonly string _systemPromptTemplate;
 
-        public OpenAiAssistantService(IOptions<OpenAiSettings> openAiSettings)
+        public OpenAiAssistantService(ChatClient chatClient)
         {
-            _chatClient = new ChatClient(model: "gpt-4o-mini", apiKey: openAiSettings.Value.ApiKey);
+            _chatClient = chatClient;
 
             var promptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Prompts", "InsuranceSystemPrompt.txt");
             _systemPromptTemplate = File.ReadAllText(promptPath);
