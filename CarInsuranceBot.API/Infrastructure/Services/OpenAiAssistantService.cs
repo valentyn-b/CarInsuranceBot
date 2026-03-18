@@ -20,7 +20,7 @@ namespace CarInsuranceBot.API.Infrastructure.Services
 
         private void LoadPrompts()
         {
-            var basePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Prompts");
+            var basePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Prompts", "Assistant");
 
             foreach (UserState state in Enum.GetValues<UserState>())
             {

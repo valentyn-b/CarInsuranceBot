@@ -49,7 +49,9 @@ namespace CarInsuranceBot.API.Extensions
 
             services.Configure<MindeeApiSettings>(configuration.GetSection("Mindee"));
 
-            services.AddScoped<IDocumentRecognitionService, MockDocumentRecognitionService>();
+            // services.AddScoped<IDocumentRecognitionService, MockDocumentRecognitionService>();
+
+            services.AddScoped<IDocumentRecognitionService, OpenAiDocumentRecognitionService>();
 
             return services;
         }
