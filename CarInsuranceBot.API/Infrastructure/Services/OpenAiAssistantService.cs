@@ -21,6 +21,11 @@ namespace CarInsuranceBot.API.Infrastructure.Services
         private void LoadPrompts()
         {
             var basePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Prompts", "Assistant");
+            var basePromptPath = Path.Combine(basePath, "Prompt_Base.txt");
+
+            string basePrompt = File.Exists(basePromptPath)
+                ? File.ReadAllText(basePromptPath)
+                : "You are a helpful car insurance assistant. Always reply in the user's language.";
 
             foreach (UserState state in Enum.GetValues<UserState>())
             {
@@ -28,11 +33,12 @@ namespace CarInsuranceBot.API.Infrastructure.Services
 
                 if (File.Exists(filePath))
                 {
-                    _statePrompts[state] = File.ReadAllText(filePath);
+                    var statePrompt = File.ReadAllText(filePath);
+                    _statePrompts[state] = $"{basePrompt}\n\n=== CURRENT STATE INSTRUCTIONS ===\n{statePrompt}";
                 }
                 else
                 {
-                    _statePrompts[state] = "You are a helpful assistant. OUTPUT FORMAT: JSON ONLY {\"replyText\": \"I need more information.\", \"nextState\": \"New\"}";
+                    _statePrompts[state] = $"{basePrompt}\n\nOUTPUT FORMAT: JSON ONLY {{\"replyText\": \"I need more information.\", \"nextState\": \"New\"}}";
                     Console.WriteLine($"[WARNING] Prompt file NOT FOUND for state: {state}");
                 }
             }
@@ -86,7 +92,7 @@ namespace CarInsuranceBot.API.Infrastructure.Services
 
             var userData = $"Passport Data: [{passportInfo}] | Vehicle Data: [{vehicleInfo}] | Valid Until: [{validUntilDate}]";
 
-            return string.Format(template, userData);
+            return template.Replace("{0}", userData);
         }
 
         private (string ReplyText, UserState NextState) ParseAiResponse(string responseJson, UserState currentState)

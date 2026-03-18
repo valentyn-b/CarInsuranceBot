@@ -2,12 +2,14 @@
 {
     public class VehicleRecognitionResultDto
     {
-        public string VinCode { get; set; } = string.Empty;
-        public string LicensePlate { get; set; } = string.Empty;
-        public string Make { get; set; } = string.Empty;
-        public string Model { get; set; } = string.Empty;
+        public bool IsValidDocument { get; set; }
+        public string? ImageDescription { get; set; }
+        public string? VinCode { get; set; }
+        public string? LicensePlate { get; set; }
+        public string? Make { get; set; }
+        public string? Model { get; set; }
         public int? YearOfManufacture { get; set; }
-        public string DocumentNumber { get; set; } = string.Empty;
-        public string OwnerFullName { get; set; } = string.Empty;
+        public string? DocumentNumber { get; set; }
+        public string? OwnerFullName { get; set; }
     }
 }

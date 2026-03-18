@@ -8,16 +8,34 @@ namespace CarInsuranceBot.API.Infrastructure.Services
     public class OpenAiDocumentRecognitionService : IDocumentRecognitionService
     {
         private readonly ChatClient _chatClient;
-        private readonly string _passportPromptPath;
-        private readonly string _vehiclePromptPath;
+        private readonly string _passportPrompt;
+        private readonly string _vehiclePrompt;
 
         public OpenAiDocumentRecognitionService(ChatClient chatClient)
         {
             _chatClient = chatClient;
 
+            LoadPrompts(out _passportPrompt, out _vehiclePrompt);
+        }
+
+        private void LoadPrompts(out string passportPrompt, out string vehiclePrompt)
+        {
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            _passportPromptPath = Path.Combine(baseDir, "Prompts", "Recognition", "Prompt_Passport.txt");
-            _vehiclePromptPath = Path.Combine(baseDir, "Prompts", "Recognition", "Prompt_Vehicle.txt");
+            string promptsPath = Path.Combine(baseDir, "Prompts", "Recognition");
+
+            string basePromptPath = Path.Combine(promptsPath, "Prompt_Base.txt");
+            string passportPath = Path.Combine(promptsPath, "Prompt_Passport.txt");
+            string vehiclePath = Path.Combine(promptsPath, "Prompt_Vehicle.txt");
+
+            string basePrompt = File.Exists(basePromptPath)
+                ? File.ReadAllText(basePromptPath)
+                : "Extract data to JSON.";
+
+            string passportSpecific = File.Exists(passportPath) ? File.ReadAllText(passportPath) : "";
+            string vehicleSpecific = File.Exists(vehiclePath) ? File.ReadAllText(vehiclePath) : "";
+
+            passportPrompt = $"{basePrompt}\n\n=== SPECIFIC INSTRUCTIONS ===\n{passportSpecific}";
+            vehiclePrompt = $"{basePrompt}\n\n=== SPECIFIC INSTRUCTIONS ===\n{vehicleSpecific}";
         }
 
         // TODO: In a real production environment handling sensitive PII (passports), 
@@ -27,11 +45,7 @@ namespace CarInsuranceBot.API.Infrastructure.Services
         {
             try
             {
-                if (!File.Exists(_passportPromptPath))
-                    throw new FileNotFoundException($"Prompt file not found at {_passportPromptPath}");
-
-                string prompt = await File.ReadAllTextAsync(_passportPromptPath);
-                return await ExtractDataAsync<PassportRecognitionResultDto>(prompt, fileBytes);
+                return await ExtractDataAsync<PassportRecognitionResultDto>(_passportPrompt, fileBytes);
             }
             catch (Exception ex)
             {
@@ -44,11 +58,7 @@ namespace CarInsuranceBot.API.Infrastructure.Services
         {
             try
             {
-                if (!File.Exists(_vehiclePromptPath))
-                    throw new FileNotFoundException($"Prompt file not found at {_vehiclePromptPath}");
-
-                string prompt = await File.ReadAllTextAsync(_vehiclePromptPath);
-                return await ExtractDataAsync<VehicleRecognitionResultDto>(prompt, fileBytes);
+                return await ExtractDataAsync<VehicleRecognitionResultDto>(_vehiclePrompt, fileBytes);
             }
             catch (Exception ex)
             {

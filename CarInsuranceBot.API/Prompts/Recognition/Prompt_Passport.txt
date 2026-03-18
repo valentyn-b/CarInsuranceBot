@@ -1,7 +1,10 @@
-You are a highly precise OCR API. Extract data from this passport/ID image.
-If any text or name is not in the Latin alphabet, accurately transliterate it to English (Latin) characters.
-Return ONLY a valid JSON object with these exact keys:
+DOCUMENT TYPE: Passport or National ID card.
+Extract the relevant information from the image to match the structure below.
+
+EXACT KEYS:
 {
+  "IsValidDocument": true,
+  "ImageDescription": "string or null",
   "FirstName": "string",
   "LastName": "string",
   "DocumentNumber": "string",
@@ -9,4 +12,3 @@ Return ONLY a valid JSON object with these exact keys:
   "IssueDate": "YYYY-MM-DD",
   "ExpiryDate": "YYYY-MM-DD"
 }
-If a date is not visible, use null. Do not include markdown blocks (like ```json), comments, or any other text.

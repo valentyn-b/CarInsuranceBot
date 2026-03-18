@@ -105,6 +105,12 @@ namespace CarInsuranceBot.API.Infrastructure.Services
                 var extractedData = await _documentRecognitionService.ExtractPassportDataAsync(fileBytes);
                 if (extractedData != null)
                 {
+                    if (!extractedData.IsValidDocument)
+                    {
+                        Console.WriteLine($"[MessageHandler] Invalid passport image: {extractedData.ImageDescription}");
+                        return $"[SYSTEM_INFO: The user uploaded an image, but it is NOT a valid passport/ID. It looks like: \"{extractedData.ImageDescription}\". Joke about it politely and ask to upload the actual document.]";
+                    }
+
                     Console.WriteLine($"[MessageHandler] Passport extracted: {extractedData.FirstName} {extractedData.LastName}");
 
                     session.Passport = new PassportData
@@ -129,6 +135,12 @@ namespace CarInsuranceBot.API.Infrastructure.Services
                 var extractedData = await _documentRecognitionService.ExtractVehicleDataAsync(fileBytes);
                 if (extractedData != null)
                 {
+                    if (!extractedData.IsValidDocument)
+                    {
+                        Console.WriteLine($"[MessageHandler] Invalid vehicle doc image: {extractedData.ImageDescription}");
+                        return $"[SYSTEM_INFO: The user uploaded an image, but it is NOT a valid vehicle document. It looks like: \"{extractedData.ImageDescription}\". Joke about it politely and ask to upload the actual document.]";
+                    }
+
                     Console.WriteLine($"[MessageHandler] Vehicle Doc extracted: {extractedData.DocumentNumber}");
 
                     session.Vehicle = new VehicleData
