@@ -64,7 +64,14 @@ namespace CarInsuranceBot.API.Infrastructure.Services
                 ChatCompletion completion = await _chatClient.CompleteChatAsync(messages, options);
                 var responseJson = completion.Content[0].Text;
 
-                return ParseAiResponse(responseJson, session.State);
+                var (replyText, nextState, detectedLanguage) = ParseAiResponse(responseJson, session.State);
+
+                if (!string.IsNullOrWhiteSpace(detectedLanguage) && detectedLanguage != "Unknown")
+                {
+                    session.Language = detectedLanguage;
+                }
+
+                return (replyText, nextState);
             }
             catch (Exception ex)
             {
@@ -75,10 +82,11 @@ namespace CarInsuranceBot.API.Infrastructure.Services
 
         private string BuildSystemPrompt(UserSession session)
         {
-            if (!_statePrompts.TryGetValue(session.State, out var template))
-            {
-                template = _statePrompts[UserState.New];
-            }
+            var template = _statePrompts.ContainsKey(session.State)
+                ? _statePrompts[session.State]
+                : _statePrompts[UserState.New];
+
+            string preferredName = session.Passport?.FirstName ?? session.TelegramName;
 
             var validUntilDate = DateTime.UtcNow.AddYears(1).ToString("yyyy-MM-dd");
 
@@ -92,10 +100,13 @@ namespace CarInsuranceBot.API.Infrastructure.Services
 
             var userData = $"Passport Data: [{passportInfo}] | Vehicle Data: [{vehicleInfo}] | Valid Until: [{validUntilDate}]";
 
-            return template.Replace("{0}", userData);
+            return template
+                .Replace("{0}", userData)
+                .Replace("{1}", session.Language)
+                .Replace("{2}", preferredName);
         }
 
-        private (string ReplyText, UserState NextState) ParseAiResponse(string responseJson, UserState currentState)
+        private (string ReplyText, UserState NextState, string? DetectedLanguage) ParseAiResponse(string responseJson, UserState currentState)
         {
             var aiResponse = JsonSerializer.Deserialize<AiResponseDto>(
                 responseJson,
@@ -114,9 +125,9 @@ namespace CarInsuranceBot.API.Infrastructure.Services
                 ? parsedState
                 : currentState;
 
-            Console.WriteLine($"[AI DEBUG] Raw JSON NextState: '{rawNextState}' | Parsed Enum: {nextState}");
+            Console.WriteLine($"[AI DEBUG] Raw JSON NextState: '{rawNextState}' | Parsed Enum: {nextState} | Language: {aiResponse?.DetectedLanguage}");
 
-            return (aiResponse?.ReplyText ?? "Sorry, an internal error occurred.", nextState);
+            return (aiResponse?.ReplyText ?? "Sorry, an internal error occurred.", nextState, aiResponse?.DetectedLanguage);
         }
     }
 }

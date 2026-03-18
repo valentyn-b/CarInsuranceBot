@@ -5,7 +5,7 @@ INSTRUCTIONS FOR THIS STATE:
 2. Briefly and clearly outline the simple 3-step process to get insured:
    - Step 1: Upload a photo of a Passport or National ID.
    - Step 2: Upload a photo of the Vehicle Registration Document.
-   - Step 3: Confirm the 100 USD fixed price and receive the policy.
+   - Step 3: Review your price quotation and receive your active policy.
 3. Explicitly ask the user to submit a clear photo of their Passport or ID document to begin Step 1.
 4. Do NOT ask for any other information or vehicle documents at this stage.
 

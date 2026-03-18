@@ -2,7 +2,8 @@
 {
     internal class AiResponseDto
     {
-        public string ReplyText { get; set; } = string.Empty;
-        public string NextState { get; set; } = string.Empty;
+        public string? ReplyText { get; set; }
+        public string? NextState { get; set; }
+        public string? DetectedLanguage { get; set; }
     }
 }

@@ -45,6 +45,11 @@ namespace CarInsuranceBot.API.Infrastructure.Services
             var chatId = update.Message.Chat.Id;
             var session = _sessionStorage.GetSession(chatId);
 
+            if (update.Message.From != null && !string.IsNullOrEmpty(update.Message.From.FirstName))
+            {
+                session.TelegramName = update.Message.From.FirstName;
+            }
+
             string messageContentForAi = await ProcessMessageContentAsync(update.Message, session);
 
             if (string.IsNullOrEmpty(messageContentForAi))
