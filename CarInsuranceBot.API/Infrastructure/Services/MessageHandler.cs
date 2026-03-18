@@ -1,5 +1,8 @@
-﻿using CarInsuranceBot.API.Application.Interfaces;
+﻿using CarInsuranceBot.API.Application.Enums;
+using CarInsuranceBot.API.Application.Interfaces;
+using CarInsuranceBot.API.Core.Entities;
 using CarInsuranceBot.API.Infrastructure.Interfaces;
+using System.Collections.Concurrent;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
@@ -7,58 +10,171 @@ namespace CarInsuranceBot.API.Infrastructure.Services
 {
     public class MessageHandler : IMessageHandler
     {
-        private readonly IUserStateStorage _stateStorage;
+        private readonly IUserSessionStorage _sessionStorage;
         private readonly IMessageService _messageService;
         private readonly IAiAssistantService _aiAssistantService;
         private readonly IDocumentRecognitionService _documentRecognitionService;
+        private static readonly ConcurrentDictionary<string, bool> _processedMediaGroups = new();
 
-        public MessageHandler(IUserStateStorage stateStorage, IMessageService messageService, IAiAssistantService aiAssistantService, IDocumentRecognitionService documentRecognitionService)
+        public MessageHandler(
+            IUserSessionStorage sessionStorage,
+            IMessageService messageService,
+            IAiAssistantService aiAssistantService,
+            IDocumentRecognitionService documentRecognitionService)
         {
-            _stateStorage = stateStorage;
+            _sessionStorage = sessionStorage;
             _messageService = messageService;
             _aiAssistantService = aiAssistantService;
-            _documentRecognitionService = documentRecognitionService;            
+            _documentRecognitionService = documentRecognitionService;
         }
 
         public async Task HandleUpdateAsync(Update update)
         {
-            if (update.Type == UpdateType.Message && update.Message != null)
+            if (update.Type != UpdateType.Message || update.Message == null)
+                return;
+
+            if (update.Message.MediaGroupId != null)
             {
-                var chatId = update.Message.Chat.Id;
-                var userName = update.Message.From?.FirstName ?? "Unknown";
-                string messageText = string.Empty;
-
-                if (update.Message.Type == MessageType.Text)
+                if (!_processedMediaGroups.TryAdd(update.Message.MediaGroupId, true))
                 {
-                    messageText = update.Message.Text!;
-                    Console.WriteLine($"[MessageHandler] Received text '{messageText}' from {userName}");
-                }
-
-                else if (update.Message.Type == MessageType.Photo)
-                {
-                    var photo = update.Message.Photo!.Last();
-
-                    var file = await _messageService.DownloadFileAsync(photo.FileId);
-
-                    Console.WriteLine("[MessageHandler] Extracting data from photo...");
-
-                    var extractedData = await _documentRecognitionService.ExtractDataFromPhotoAsync(file);
-
-                    messageText = $"[PHOTO_RECEIVED: {extractedData}]";
-                    Console.WriteLine($"[MessageHandler] Data extracted successfully.");
-                }
-
-                else
-                {
+                    Console.WriteLine($"[MessageHandler] Ignored duplicate photo from album {update.Message.MediaGroupId}");
                     return;
                 }
-
-                var currentState = _stateStorage.GetUserState(chatId);
-                var (replyText, newState) = await _aiAssistantService.ProcessUserMessageAsync(messageText, currentState);
-                _stateStorage.SetUserState(chatId, newState);
-
-                await _messageService.SendMessageAsync(chatId, replyText);
             }
+
+            var chatId = update.Message.Chat.Id;
+            var session = _sessionStorage.GetSession(chatId);
+
+            string messageContentForAi = await ProcessMessageContentAsync(update.Message, session);
+
+            if (string.IsNullOrEmpty(messageContentForAi))
+                return;
+
+            var (replyText, newState) = await _aiAssistantService.ProcessUserMessageAsync(messageContentForAi, session);
+
+            newState = ApplyGuardrails(session.State, newState, messageContentForAi);
+
+            session.State = newState;
+            _sessionStorage.SaveSession(chatId, session);
+
+            await _messageService.SendMessageAsync(chatId, replyText);
+
+            Console.WriteLine($"[MessageHandler] Chat: {chatId} | State Transition: {session.State} -> {newState}");
+        }
+
+        private async Task<string> ProcessMessageContentAsync(Message message, UserSession session)
+        {
+            if (message.Type == MessageType.Text)
+            {
+                return HandleTextAsync(message, session);
+            }
+            else if (message.Type == MessageType.Photo)
+            {
+                return await HandlePhotoAsync(message, session);
+            }
+
+            return string.Empty;
+        }
+
+        private string HandleTextAsync(Message message, UserSession session)
+        {
+            var text = message.Text!;
+            var userName = message.From?.FirstName ?? "Unknown";
+            Console.WriteLine($"[MessageHandler] Received text '{text}' from {userName}");
+
+            if (text.Trim().Equals("/start", StringComparison.OrdinalIgnoreCase))
+            {
+                session.State = UserState.New;
+                session.Passport = null;
+                session.Vehicle = null;
+                Console.WriteLine($"[MessageHandler] Hard reset for user {message.Chat.Id} via /start.");
+            }
+
+            return text;
+        }
+
+        private async Task<string> HandlePhotoAsync(Message message, UserSession session)
+        {
+            var photo = message.Photo!.Last();
+            var fileBytes = await _messageService.DownloadFileAsync(photo.FileId);
+
+            Console.WriteLine("[MessageHandler] Extracting data from photo...");
+
+            if (session.State == UserState.WaitingForPassport)
+            {
+                var extractedData = await _documentRecognitionService.ExtractPassportDataAsync(fileBytes);
+                if (extractedData != null)
+                {
+                    Console.WriteLine($"[MessageHandler] Passport extracted: {extractedData.FirstName} {extractedData.LastName}");
+
+                    session.Passport = new PassportData
+                    {
+                        FirstName = extractedData.FirstName,
+                        LastName = extractedData.LastName,
+                        DocumentNumber = extractedData.DocumentNumber,
+                        DateOfBirth = extractedData.DateOfBirth,
+                        IssueDate = extractedData.IssueDate,
+                        ExpiryDate = extractedData.ExpiryDate
+                    };
+
+                    var dob = session.Passport.DateOfBirth?.ToString("yyyy-MM-dd") ?? "Unknown";
+                    var issue = session.Passport.IssueDate?.ToString("yyyy-MM-dd") ?? "Unknown";
+                    var expiry = session.Passport.ExpiryDate?.ToString("yyyy-MM-dd") ?? "Unknown";
+
+                    return $"[PHOTO_RECEIVED: First Name: {session.Passport.FirstName}, Last Name: {session.Passport.LastName}, Document Number: {session.Passport.DocumentNumber}, Date of Birth: {dob}, Issue Date: {issue}, Expiry Date: {expiry}]";
+                }
+            }
+            else if (session.State == UserState.WaitingForVehicleDoc)
+            {
+                var extractedData = await _documentRecognitionService.ExtractVehicleDataAsync(fileBytes);
+                if (extractedData != null)
+                {
+                    Console.WriteLine($"[MessageHandler] Vehicle Doc extracted: {extractedData.DocumentNumber}");
+
+                    session.Vehicle = new VehicleData
+                    {
+                        DocumentNumber = extractedData.DocumentNumber,
+                        VinCode = extractedData.VinCode,
+                        Make = extractedData.Make,
+                        Model = extractedData.Model,
+                        YearOfManufacture = extractedData.YearOfManufacture,
+                        LicensePlate = extractedData.LicensePlate,
+                        OwnerFullName = extractedData.OwnerFullName
+                    };
+
+                    var year = session.Vehicle.YearOfManufacture?.ToString() ?? "Unknown";
+
+                    return $"[PHOTO_RECEIVED: Document Number: {session.Vehicle.DocumentNumber}, VIN: {session.Vehicle.VinCode}, Make: {session.Vehicle.Make}, Model: {session.Vehicle.Model}, Year: {year}, License Plate: {session.Vehicle.LicensePlate}, Owner: {session.Vehicle.OwnerFullName}]";
+                }
+            }
+
+            Console.WriteLine("[MessageHandler] Failed to extract data.");
+            return "[PHOTO_ERROR: Could not read document. Please ask user to send a better photo.]";
+        }
+
+        private UserState ApplyGuardrails(UserState currentState, UserState suggestedState, string messageContent)
+        {
+            if (currentState == UserState.WaitingForPassport)
+            {
+                if (!messageContent.Contains("[PHOTO_RECEIVED"))
+                {
+                    Console.WriteLine("[SECURITY] AI tried to skip Passport upload. Access denied.");
+                    return UserState.WaitingForPassport;
+                }
+                return UserState.ConfirmingPassport;
+            }
+
+            if (currentState == UserState.WaitingForVehicleDoc)
+            {
+                if (!messageContent.Contains("[PHOTO_RECEIVED"))
+                {
+                    Console.WriteLine("[SECURITY] AI tried to skip Vehicle Doc upload. Access denied.");
+                    return UserState.WaitingForVehicleDoc;
+                }
+                return UserState.ConfirmingVehicleDoc;
+            }
+
+            return suggestedState;
         }
     }
 }

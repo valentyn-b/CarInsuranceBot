@@ -13,15 +13,11 @@ namespace CarInsuranceBot.API.Extensions
     {
         public static IServiceCollection AddApplicationServices(this IServiceCollection services)
         {
-            services.AddSingleton<IUserStateStorage, InMemoryUserStateStorage>();
+            services.AddSingleton<IUserSessionStorage, InMemoryUserSessionStorage>();
 
             services.AddScoped<IMessageHandler, MessageHandler>();
 
             services.AddScoped<IMessageService, MessageService>();
-
-            services.AddScoped<IAiAssistantService, OpenAiAssistantService>();
-
-            services.AddScoped<IDocumentRecognitionService, MockDocumentRecognitionService>();
 
             return services;
         }
@@ -49,7 +45,11 @@ namespace CarInsuranceBot.API.Extensions
                 return new ChatClient(model: "gpt-4o-mini", apiKey: settings.ApiKey);
             });
 
-            // Add Mendee
+            services.AddScoped<IAiAssistantService, OpenAiAssistantService>();
+
+            services.Configure<MindeeApiSettings>(configuration.GetSection("Mindee"));
+
+            services.AddScoped<IDocumentRecognitionService, MockDocumentRecognitionService>();
 
             return services;
         }

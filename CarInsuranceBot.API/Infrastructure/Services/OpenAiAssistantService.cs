@@ -1,5 +1,6 @@
 ﻿using CarInsuranceBot.API.Application.Enums;
 using CarInsuranceBot.API.Application.Interfaces;
+using CarInsuranceBot.API.Core.Entities;
 using CarInsuranceBot.API.Infrastructure.DTOs;
 using OpenAI.Chat;
 using System.Text.Json;
@@ -9,25 +10,43 @@ namespace CarInsuranceBot.API.Infrastructure.Services
     public class OpenAiAssistantService : IAiAssistantService
     {
         private readonly ChatClient _chatClient;
-        private readonly string _systemPromptTemplate;
+        private readonly Dictionary<UserState, string> _statePrompts = new();
 
         public OpenAiAssistantService(ChatClient chatClient)
         {
             _chatClient = chatClient;
-
-            var promptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Prompts", "InsuranceSystemPrompt.txt");
-            _systemPromptTemplate = File.ReadAllText(promptPath);
+            LoadPrompts();
         }
 
-        public async Task<(string ReplyText, UserState NextState)> ProcessUserMessageAsync(string message, UserState currentState)
+        private void LoadPrompts()
         {
-            var systemPrompt = string.Format(_systemPromptTemplate, currentState.ToString());
+            var basePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Prompts");
+
+            foreach (UserState state in Enum.GetValues<UserState>())
+            {
+                var filePath = Path.Combine(basePath, $"Prompt_{state}.txt");
+
+                if (File.Exists(filePath))
+                {
+                    _statePrompts[state] = File.ReadAllText(filePath);
+                }
+                else
+                {
+                    _statePrompts[state] = "You are a helpful assistant. OUTPUT FORMAT: JSON ONLY {\"replyText\": \"I need more information.\", \"nextState\": \"New\"}";
+                    Console.WriteLine($"[WARNING] Prompt file NOT FOUND for state: {state}");
+                }
+            }
+        }
+
+        public async Task<(string ReplyText, UserState NextState)> ProcessUserMessageAsync(string message, UserSession session)
+        {
+            var systemPrompt = BuildSystemPrompt(session);
 
             List<ChatMessage> messages = new()
-        {
-            new SystemChatMessage(systemPrompt),
-            new UserChatMessage(message)
-        };
+            {
+                new SystemChatMessage(systemPrompt),
+                new UserChatMessage(message)
+            };
 
             var options = new ChatCompletionOptions
             {
@@ -39,22 +58,59 @@ namespace CarInsuranceBot.API.Infrastructure.Services
                 ChatCompletion completion = await _chatClient.CompleteChatAsync(messages, options);
                 var responseJson = completion.Content[0].Text;
 
-                var aiResponse = JsonSerializer.Deserialize<AiResponseDto>(
-                    responseJson,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-                );
-
-                var nextState = Enum.TryParse<UserState>(aiResponse?.NextState, out var parsedState)
-                    ? parsedState
-                    : currentState;
-
-                return (aiResponse?.ReplyText ?? "Sorry, an internal error occurred.", nextState);
+                return ParseAiResponse(responseJson, session.State);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[OpenAI Error]: {ex.Message}");
-                return ("Sorry, the service is temporarily unavailable. Please try again later.", currentState);
+                return ("Sorry, the service is temporarily unavailable. Please try again later.", session.State);
             }
+        }
+
+        private string BuildSystemPrompt(UserSession session)
+        {
+            if (!_statePrompts.TryGetValue(session.State, out var template))
+            {
+                template = _statePrompts[UserState.New];
+            }
+
+            var validUntilDate = DateTime.UtcNow.AddYears(1).ToString("yyyy-MM-dd");
+
+            var passportInfo = session.Passport != null
+                ? $"First Name: {session.Passport.FirstName}, Last Name: {session.Passport.LastName}, Passport No: {session.Passport.DocumentNumber}"
+                : "Not Provided";
+
+            var vehicleInfo = session.Vehicle != null
+                ? $"Vehicle Doc: {session.Vehicle.DocumentNumber}, VIN: {session.Vehicle.VinCode}, Make: {session.Vehicle.Make}, Model: {session.Vehicle.Model}"
+                : "Not Provided";
+
+            var userData = $"Passport Data: [{passportInfo}] | Vehicle Data: [{vehicleInfo}] | Valid Until: [{validUntilDate}]";
+
+            return string.Format(template, userData);
+        }
+
+        private (string ReplyText, UserState NextState) ParseAiResponse(string responseJson, UserState currentState)
+        {
+            var aiResponse = JsonSerializer.Deserialize<AiResponseDto>(
+                responseJson,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+            );
+
+            string rawNextState = aiResponse?.NextState ?? string.Empty;
+
+            string cleanNextState = rawNextState
+                .Replace(".", "")
+                .Replace("\"", "")
+                .Replace(" ", "")
+                .Trim();
+
+            var nextState = Enum.TryParse<UserState>(cleanNextState, true, out var parsedState)
+                ? parsedState
+                : currentState;
+
+            Console.WriteLine($"[AI DEBUG] Raw JSON NextState: '{rawNextState}' | Parsed Enum: {nextState}");
+
+            return (aiResponse?.ReplyText ?? "Sorry, an internal error occurred.", nextState);
         }
     }
 }

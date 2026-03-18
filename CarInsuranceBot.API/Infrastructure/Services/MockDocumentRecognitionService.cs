@@ -1,15 +1,37 @@
-﻿using CarInsuranceBot.API.Application.Interfaces;
+﻿using CarInsuranceBot.API.Application.DTOs;
+using CarInsuranceBot.API.Application.Interfaces;
 
 namespace CarInsuranceBot.API.Infrastructure.Services
 {
     public class MockDocumentRecognitionService : IDocumentRecognitionService
     {
-        public async Task<string> ExtractDataFromPhotoAsync(byte[] photoBytes)
+        public async Task<PassportRecognitionResultDto?> ExtractPassportDataAsync(byte[] fileBytes)
         {
-            // Recognition imitation
-            await Task.Delay(2000);
+            return new PassportRecognitionResultDto
+            {
+                // Fake data
+                FirstName = "MockFirstName",
+                LastName = "MockLastName",
+                DocumentNumber = "PP123456",
+                DateOfBirth = new DateTime(1990, 1, 1),
+                IssueDate = new DateTime(2020, 5, 15),
+                ExpiryDate = new DateTime(2030, 5, 15)
+            };
+        }
 
-            return "First Name: John, Last Name: Smith, Document Number: AB123456, Car: VW Golf";
+        public async Task<VehicleRecognitionResultDto?> ExtractVehicleDataAsync(byte[] fileBytes)
+        {
+            return new VehicleRecognitionResultDto
+            {
+                // Fake data
+                VinCode = "JTD1234567890ABCD",
+                LicensePlate = "KA7777AA",
+                Make = "Toyota",
+                Model = "Camry",
+                YearOfManufacture = 2021,
+                DocumentNumber = "CX987654",
+                OwnerFullName = "MockFirstName MockLastName"
+            };
         }
     }
 }
