@@ -95,6 +95,12 @@ namespace CarInsuranceBot.API.Infrastructure.Services
 
         private async Task<string> HandlePhotoAsync(Message message, UserSession session)
         {
+            if (session.State != UserState.WaitingForPassport && session.State != UserState.WaitingForVehicleDoc)
+            {
+                Console.WriteLine($"[MessageHandler] Ignored photo received in state: {session.State}");
+                return "[SYSTEM_INFO: The user sent a photo, but NO PHOTO IS EXPECTED at this stage. Politely tell them that you don't need any photos right now. If you are waiting for a Yes/No confirmation, strictly ask them to answer Yes or No.]";
+            }
+
             var photo = message.Photo!.Last();
             var fileBytes = await _messageService.DownloadFileAsync(photo.FileId);
 
@@ -184,7 +190,7 @@ namespace CarInsuranceBot.API.Infrastructure.Services
                     return UserState.WaitingForVehicleDoc;
                 }
                 return UserState.ConfirmingVehicleDoc;
-            }
+            }           
 
             return suggestedState;
         }
