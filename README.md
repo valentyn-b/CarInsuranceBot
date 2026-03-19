@@ -12,7 +12,7 @@ This project fulfills and significantly exceeds the requirements of the "Telegra
 | :--- | :--- |
 | **1. Bot Setup** | ✔️ Handled via `/start`. The AI introduces itself, explains the 3-step process, and asks for the first document. |
 | **2. Document Submission** | ✔️ Prompts users for Passport/National ID, followed by the Vehicle Registration Document. |
-| **3. Mindee API / OCR** | ✔️ **Upgraded Architecture:** Replaced Mindee with **OpenAI Vision API** (details below). A Mock service is also included in the DI container. |
+| **3. Mindee API / OCR** | ✔️ **Upgraded Architecture:** Replaced Mindee with **OpenAI Vision API** (details below). A Mock service is also implemented and can be easily swapped in via the DI container. |
 | **4. Data Confirmation** | ✔️ AI extracts data, displays it, and asks for "Yes/No" confirmation. Disagreements trigger a re-upload request. |
 | **5. Price Quotation** | ✔️ Fixed at 100 USD. Rejections loop back politely, preventing progression until agreement is reached. |
 | **6. Policy Issuance** | ✔️ AI dynamically generates a formatted dummy policy with emojis and correctly calculated expiration dates. |
@@ -44,6 +44,16 @@ If users ask questions about the insurance terms, pricing, or the algorithm at a
 
 ---
 
+## 🚀 Deployment & Hosting
+
+The application is containerized using **Docker** and hosted on **Render** (Free Tier).
+
+* **Infrastructure:** The bot runs in a Linux container environment.
+* **Webhooks:** The system uses Telegram Webhooks for instant message delivery instead of polling. 
+* **Cold Start Note:** Since the project uses Render's Free Tier, the instance may "spin down" after 15 minutes of inactivity. If the bot doesn't respond immediately, please allow **up to 50 seconds** for the "cold start" to complete. Subsequent interactions will be near-instant.
+
+---
+
 ## 🔄 Detailed Bot Workflow
 
 1. **`New`**: User sends `/start`. Bot outlines the 3-step process.
@@ -61,7 +71,7 @@ If users ask questions about the insurance terms, pricing, or the algorithm at a
 ### Prerequisites
 * **.NET 10 SDK**
 * A Telegram Bot Token from [@BotFather](https://t.me/BotFather)
-* An OpenAI API Key with access to Vision models (e.g., `gpt-4o-mini`, `gpt-4o`)
+* An OpenAI API Key with access to Vision models (e.g., `gpt-4o-mini`, `gpt-5.4`)
 
 ### Secure Configuration (User Secrets)
 This project follows strict security best practices. API keys are managed via the .NET Secret Manager, ensuring they are not hardcoded or accidentally pushed to source control.
@@ -69,14 +79,17 @@ This project follows strict security best practices. API keys are managed via th
 1. Clone the repository and navigate to the API project:
     ```bash
     git clone <repository_url>
-    cd src/CarInsuranceBot.API
+    cd CarInsuranceBot.API
+    ```
 2. Initialize User Secrets:
     ```bash
     dotnet user-secrets init
+    ```
 3. Add your API keys securely:
     ```bash
     dotnet user-secrets set "TelegramSettings:BotToken" "YOUR_TELEGRAM_BOT_TOKEN"
     dotnet user-secrets set "OpenAI:ApiKey" "YOUR_OPENAI_API_KEY"
+    ```
 4. *(Optional)* The OpenAI model is configured in `appsettings.json`. You can easily swap between models (default is `gpt-4o-mini` for speed and cost-efficiency) without recompiling the code.
     ```json
     {
@@ -84,11 +97,18 @@ This project follows strict security best practices. API keys are managed via th
         "Model": "gpt-4o-mini" 
         }
     }
+    ```
 5. Running the Application:
     ```bash
     dotnet build
     dotnet run
-🔗 Deliverables
-* Source Code: Provided in this repository.
-* Telegram Bot Link: @YourBotUsernameHere (Replace with your actual bot link)
-* Demo Video: [Link to Loom/YouTube demo] (Optional: Add link here if you recorded a screencast)
+    ```
+
+### Manual Webhook Setup (For Cloud Deployment)
+If deploying to a new environment, remember to set the Telegram Webhook manually via browser:
+#### [https://api.telegram.org/bot<YOUR_TOKEN>/setWebhook?url=<YOUR_RENDER_URL>/api/bot](https://api.telegram.org/bot<YOUR_TOKEN>/setWebhook?url=<YOUR_RENDER_URL>/api/bot)
+
+## Deliverables🔗
+- **Source Code:** [Provided in this repository](https://github.com/valentyn-b/CarInsuranceBot)
+- **Telegram Bot Link:** [@CarInsuranceDocRecognise_bot](https://t.me/CarInsuranceDocRecognise_bot)
+- **Demo Video:** [Link to YouTube](https://youtu.be/snAU2TqPTwE)
