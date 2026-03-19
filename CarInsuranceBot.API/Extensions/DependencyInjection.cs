@@ -42,12 +42,14 @@ namespace CarInsuranceBot.API.Extensions
             services.AddSingleton(sp =>
             {
                 var settings = sp.GetRequiredService<IOptions<OpenAiSettings>>().Value;
-                return new ChatClient(model: "gpt-4o-mini", apiKey: settings.ApiKey);
+                var modelName = string.IsNullOrWhiteSpace(settings.Model) ? "gpt-4o-mini" : settings.Model;
+
+                return new ChatClient(model: modelName, apiKey: settings.ApiKey);
             });
 
             services.AddScoped<IAiAssistantService, OpenAiAssistantService>();
 
-            services.Configure<MindeeApiSettings>(configuration.GetSection("Mindee"));
+            // services.Configure<MindeeApiSettings>(configuration.GetSection("Mindee"));
 
             // services.AddScoped<IDocumentRecognitionService, MockDocumentRecognitionService>();
 

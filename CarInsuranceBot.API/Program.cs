@@ -1,5 +1,7 @@
 using CarInsuranceBot.API.Extensions;
 
+Console.OutputEncoding = System.Text.Encoding.UTF8;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.

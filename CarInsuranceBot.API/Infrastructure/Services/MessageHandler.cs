@@ -179,23 +179,33 @@ namespace CarInsuranceBot.API.Infrastructure.Services
         {
             if (currentState == UserState.WaitingForPassport)
             {
-                if (!messageContent.Contains("[PHOTO_RECEIVED"))
+                if (messageContent.Contains("[PHOTO_RECEIVED"))
+                {
+                    return UserState.ConfirmingPassport;
+                }
+
+                if (suggestedState != UserState.WaitingForPassport)
                 {
                     Console.WriteLine("[SECURITY] AI tried to skip Passport upload. Access denied.");
-                    return UserState.WaitingForPassport;
                 }
-                return UserState.ConfirmingPassport;
+
+                return UserState.WaitingForPassport;
             }
 
             if (currentState == UserState.WaitingForVehicleDoc)
             {
-                if (!messageContent.Contains("[PHOTO_RECEIVED"))
+                if (messageContent.Contains("[PHOTO_RECEIVED"))
+                {
+                    return UserState.ConfirmingVehicleDoc;
+                }
+
+                if (suggestedState != UserState.WaitingForVehicleDoc)
                 {
                     Console.WriteLine("[SECURITY] AI tried to skip Vehicle Doc upload. Access denied.");
-                    return UserState.WaitingForVehicleDoc;
                 }
-                return UserState.ConfirmingVehicleDoc;
-            }           
+
+                return UserState.WaitingForVehicleDoc;
+            }
 
             return suggestedState;
         }
