@@ -1,6 +1,6 @@
 ﻿using CarInsuranceBot.API.Application.Interfaces;
+using CarInsuranceBot.API.Application.Services;
 using CarInsuranceBot.API.Configuration;
-using CarInsuranceBot.API.Infrastructure.Interfaces;
 using CarInsuranceBot.API.Infrastructure.Services;
 using CarInsuranceBot.API.Infrastructure.Storage;
 using Microsoft.Extensions.Options;
@@ -13,11 +13,15 @@ namespace CarInsuranceBot.API.Extensions
     {
         public static IServiceCollection AddApplicationServices(this IServiceCollection services)
         {
+            services.AddMemoryCache();
+
             services.AddSingleton<IUserSessionStorage, InMemoryUserSessionStorage>();
+
+            services.AddSingleton<IPromptProvider, PromptProvider>();
 
             services.AddScoped<IMessageHandler, MessageHandler>();
 
-            services.AddScoped<IMessageService, MessageService>();
+            services.AddScoped<IMessageService, TelegramMessageService>();
 
             return services;
         }
@@ -48,10 +52,6 @@ namespace CarInsuranceBot.API.Extensions
             });
 
             services.AddScoped<IAiAssistantService, OpenAiAssistantService>();
-
-            // services.Configure<MindeeApiSettings>(configuration.GetSection("Mindee"));
-
-            // services.AddScoped<IDocumentRecognitionService, MockDocumentRecognitionService>();
 
             services.AddScoped<IDocumentRecognitionService, OpenAiDocumentRecognitionService>();
 

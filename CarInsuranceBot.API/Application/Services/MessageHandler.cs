@@ -1,12 +1,11 @@
 ﻿using CarInsuranceBot.API.Application.Enums;
 using CarInsuranceBot.API.Application.Interfaces;
 using CarInsuranceBot.API.Core.Entities;
-using CarInsuranceBot.API.Infrastructure.Interfaces;
-using System.Collections.Concurrent;
+using Microsoft.Extensions.Caching.Memory;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
-namespace CarInsuranceBot.API.Infrastructure.Services
+namespace CarInsuranceBot.API.Application.Services
 {
     public class MessageHandler : IMessageHandler
     {
@@ -14,18 +13,20 @@ namespace CarInsuranceBot.API.Infrastructure.Services
         private readonly IMessageService _messageService;
         private readonly IAiAssistantService _aiAssistantService;
         private readonly IDocumentRecognitionService _documentRecognitionService;
-        private static readonly ConcurrentDictionary<string, bool> _processedMediaGroups = new();
+        private readonly IMemoryCache _memoryCache;
 
         public MessageHandler(
             IUserSessionStorage sessionStorage,
             IMessageService messageService,
             IAiAssistantService aiAssistantService,
-            IDocumentRecognitionService documentRecognitionService)
+            IDocumentRecognitionService documentRecognitionService,
+            IMemoryCache memoryCache)
         {
             _sessionStorage = sessionStorage;
             _messageService = messageService;
             _aiAssistantService = aiAssistantService;
             _documentRecognitionService = documentRecognitionService;
+            _memoryCache = memoryCache;
         }
 
         public async Task HandleUpdateAsync(Update update)
@@ -35,11 +36,11 @@ namespace CarInsuranceBot.API.Infrastructure.Services
 
             if (update.Message.MediaGroupId != null)
             {
-                if (!_processedMediaGroups.TryAdd(update.Message.MediaGroupId, true))
+                if (_memoryCache.TryGetValue(update.Message.MediaGroupId, out _))
                 {
-                    Console.WriteLine($"[MessageHandler] Ignored duplicate photo from album {update.Message.MediaGroupId}");
                     return;
                 }
+                _memoryCache.Set(update.Message.MediaGroupId, true, TimeSpan.FromMinutes(2));
             }
 
             var chatId = update.Message.Chat.Id;

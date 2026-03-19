@@ -1,4 +1,4 @@
-﻿using CarInsuranceBot.API.Infrastructure.Interfaces;
+﻿using CarInsuranceBot.API.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Telegram.Bot.Types;
 

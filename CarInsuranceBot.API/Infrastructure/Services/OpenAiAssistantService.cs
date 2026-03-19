@@ -10,39 +10,13 @@ namespace CarInsuranceBot.API.Infrastructure.Services
     public class OpenAiAssistantService : IAiAssistantService
     {
         private readonly ChatClient _chatClient;
-        private readonly Dictionary<UserState, string> _statePrompts = new();
+        private readonly IPromptProvider _promptProvider;
 
-        public OpenAiAssistantService(ChatClient chatClient)
+        public OpenAiAssistantService(ChatClient chatClient, IPromptProvider promptProvider)
         {
             _chatClient = chatClient;
-            LoadPrompts();
-        }
-
-        private void LoadPrompts()
-        {
-            var basePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Prompts", "Assistant");
-            var basePromptPath = Path.Combine(basePath, "Prompt_Base.txt");
-
-            string basePrompt = File.Exists(basePromptPath)
-                ? File.ReadAllText(basePromptPath)
-                : "You are a helpful car insurance assistant. Always reply in the user's language.";
-
-            foreach (UserState state in Enum.GetValues<UserState>())
-            {
-                var filePath = Path.Combine(basePath, $"Prompt_{state}.txt");
-
-                if (File.Exists(filePath))
-                {
-                    var statePrompt = File.ReadAllText(filePath);
-                    _statePrompts[state] = $"{basePrompt}\n\n=== CURRENT STATE INSTRUCTIONS ===\n{statePrompt}";
-                }
-                else
-                {
-                    _statePrompts[state] = $"{basePrompt}\n\nOUTPUT FORMAT: JSON ONLY {{\"replyText\": \"I need more information.\", \"nextState\": \"New\"}}";
-                    Console.WriteLine($"[WARNING] Prompt file NOT FOUND for state: {state}");
-                }
-            }
-        }
+            _promptProvider = promptProvider;
+        }              
 
         public async Task<(string ReplyText, UserState NextState)> ProcessUserMessageAsync(string message, UserSession session)
         {
@@ -82,9 +56,7 @@ namespace CarInsuranceBot.API.Infrastructure.Services
 
         private string BuildSystemPrompt(UserSession session)
         {
-            var template = _statePrompts.ContainsKey(session.State)
-                ? _statePrompts[session.State]
-                : _statePrompts[UserState.New];
+            var template = _promptProvider.GetAssistantPrompt(session.State);
 
             string preferredName = session.Passport?.FirstName ?? session.TelegramName;
 

@@ -8,34 +8,12 @@ namespace CarInsuranceBot.API.Infrastructure.Services
     public class OpenAiDocumentRecognitionService : IDocumentRecognitionService
     {
         private readonly ChatClient _chatClient;
-        private readonly string _passportPrompt;
-        private readonly string _vehiclePrompt;
+        private readonly IPromptProvider _promptProvider;
 
-        public OpenAiDocumentRecognitionService(ChatClient chatClient)
+        public OpenAiDocumentRecognitionService(ChatClient chatClient, IPromptProvider promptProvider)
         {
             _chatClient = chatClient;
-
-            LoadPrompts(out _passportPrompt, out _vehiclePrompt);
-        }
-
-        private void LoadPrompts(out string passportPrompt, out string vehiclePrompt)
-        {
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            string promptsPath = Path.Combine(baseDir, "Prompts", "Recognition");
-
-            string basePromptPath = Path.Combine(promptsPath, "Prompt_Base.txt");
-            string passportPath = Path.Combine(promptsPath, "Prompt_Passport.txt");
-            string vehiclePath = Path.Combine(promptsPath, "Prompt_Vehicle.txt");
-
-            string basePrompt = File.Exists(basePromptPath)
-                ? File.ReadAllText(basePromptPath)
-                : "Extract data to JSON.";
-
-            string passportSpecific = File.Exists(passportPath) ? File.ReadAllText(passportPath) : "";
-            string vehicleSpecific = File.Exists(vehiclePath) ? File.ReadAllText(vehiclePath) : "";
-
-            passportPrompt = $"{basePrompt}\n\n=== SPECIFIC INSTRUCTIONS ===\n{passportSpecific}";
-            vehiclePrompt = $"{basePrompt}\n\n=== SPECIFIC INSTRUCTIONS ===\n{vehicleSpecific}";
+            _promptProvider = promptProvider;
         }
 
         // TODO: In a real production environment handling sensitive PII (passports), 
@@ -45,7 +23,7 @@ namespace CarInsuranceBot.API.Infrastructure.Services
         {
             try
             {
-                return await ExtractDataAsync<PassportRecognitionResultDto>(_passportPrompt, fileBytes);
+                return await ExtractDataAsync<PassportRecognitionResultDto>(_promptProvider.GetPassportRecognitionPrompt(), fileBytes);
             }
             catch (Exception ex)
             {
@@ -58,7 +36,7 @@ namespace CarInsuranceBot.API.Infrastructure.Services
         {
             try
             {
-                return await ExtractDataAsync<VehicleRecognitionResultDto>(_vehiclePrompt, fileBytes);
+                return await ExtractDataAsync<VehicleRecognitionResultDto>(_promptProvider.GetVehicleRecognitionPrompt(), fileBytes);
             }
             catch (Exception ex)
             {

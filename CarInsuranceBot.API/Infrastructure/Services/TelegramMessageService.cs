@@ -3,11 +3,11 @@ using Telegram.Bot;
 
 namespace CarInsuranceBot.API.Infrastructure.Services
 {
-    public class MessageService : IMessageService
+    public class TelegramMessageService : IMessageService
     {
         private readonly ITelegramBotClient _botClient;
 
-        public MessageService(ITelegramBotClient botClient)
+        public TelegramMessageService(ITelegramBotClient botClient)
         {
             _botClient = botClient;
         }
